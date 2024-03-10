@@ -316,6 +316,11 @@ export class Logger {
         await callback(progressBar);
     }
 
+    public removeAllWidgets() {
+        this.widgets = [];
+        this.redrawWidgets();
+    }
+
     public configure(options: LoggerOptions) {
         this.options = Object.assign(this.options ?? {}, options);
     }
