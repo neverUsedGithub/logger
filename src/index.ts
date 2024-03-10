@@ -4,6 +4,7 @@ import { inspect } from "util";
 export abstract class Widget {
     constructor(protected logger: Logger) {}
 
+    public abstract fps: number;
     public abstract render(): string;
 }
 
@@ -23,6 +24,7 @@ export interface SpinnerOptions {
 
 export class SpinnerWidget extends Widget {
     private index = 0;
+    public fps: number = 16;
 
     constructor(
         logger: Logger,
@@ -99,6 +101,7 @@ export class ProgressBarWidget extends Widget {
     private start: number = 0;
     private anim: number = 0;
     private extraTokens: Record<string, any> = {};
+    public fps: number = 16;
 
     constructor(
         logger: Logger,
@@ -240,12 +243,13 @@ export interface LoggerOptions {
 }
 
 export class Logger {
-    private widgets: Widget[] = [];
+    private widgets: { widget: Widget; timer: number; out: string }[] = [];
     private lastWidgetCount: number = 0;
+    private lastUpdate: number = performance.now();
     private widgetLoop: NodeJS.Timeout;
 
     constructor(private options?: LoggerOptions) {
-        this.widgetLoop = setInterval(() => this.redrawWidgets(), 100);
+        this.widgetLoop = setInterval(() => this.redrawWidgets(), 30);
         this.widgetLoop.unref();
     }
 
@@ -266,20 +270,22 @@ export class Logger {
 
     public spinner(text: string, options?: SpinnerOptions) {
         const widget = new SpinnerWidget(this, text, options);
-        this.widgets.push(widget);
+        this.widgets.push({ widget, timer: 0, out: widget.render() });
+        this.redrawWidgets();
 
         return widget;
     }
 
     public progress(options: ProgressBarOptions) {
         const widget = new ProgressBarWidget(this, options);
-        this.widgets.push(widget);
+        this.widgets.push({ widget, timer: 0, out: widget.render() });
+        this.redrawWidgets();
 
         return widget;
     }
 
     public remove(widget: Widget) {
-        this.widgets = this.widgets.filter((w) => w !== widget);
+        this.widgets = this.widgets.filter((w) => w.widget !== widget);
         this.redrawWidgets();
     }
 
@@ -348,10 +354,23 @@ export class Logger {
 
         out += "\r\x1B[2K\r\n".repeat(this.options?.widgetMargin ?? 1);
 
+        const now = performance.now();
+        const dt = now - this.lastUpdate;
+        this.lastUpdate = now;
+
         for (let i = 0; i < this.lastWidgetCount; i++) {
-            if (i < this.widgets.length)
-                out += `\r\x1B[2K${this.widgets[i].render()}\r\n`;
-            else out += `\r\x1B[2K\r\n`;
+            if (i < this.widgets.length) {
+                const targetMS = 1000 / this.widgets[i].widget.fps;
+
+                this.widgets[i].timer += dt;
+
+                while (this.widgets[i].timer >= targetMS) {
+                    this.widgets[i].out = this.widgets[i].widget.render();
+                    this.widgets[i].timer -= targetMS;
+                }
+
+                out += `\r\x1B[2K${this.widgets[i].out}\r\n`;
+            } else out += `\r\x1B[2K\r\n`;
         }
 
         out += `\x1B[${
