@@ -247,6 +247,7 @@ export class Logger {
     private lastWidgetCount: number = 0;
     private lastUpdate: number = performance.now();
     private widgetLoop: NodeJS.Timeout;
+    private firstWidgetLog: boolean = true;
 
     constructor(private options?: LoggerOptions) {
         this.widgetLoop = setInterval(() => this.redrawWidgets(), 30);
@@ -349,6 +350,10 @@ export class Logger {
 
     private redrawWidgets() {
         if (this.lastWidgetCount === 0 && this.widgets.length === 0) return;
+        if (this.firstWidgetLog) {
+            this.firstWidgetLog = false;
+            if (this.options?.widgetMargin === 0) process.stdout.write("\r\n");
+        }
 
         let out = "";
 
