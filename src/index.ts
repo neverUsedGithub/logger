@@ -1,6 +1,10 @@
 import ansis from "ansis";
 import { inspect } from "util";
 
+const CHAR_CHECKMARK = String.fromCharCode(10003);
+const CHAR_CROSSMARK = String.fromCharCode(10007);
+const CHAR_HLINE = String.fromCharCode(9472);
+
 export abstract class Widget {
     constructor(protected logger: Logger) {}
 
@@ -80,8 +84,8 @@ const PROGRESS_BAR_STYLES = {
         100: "=",
     },
     line: {
-        0: ansis.gray`─`,
-        100: ansis.green`─`,
+        0: ansis.gray(CHAR_HLINE),
+        100: ansis.green(CHAR_HLINE),
     },
 } as const;
 
@@ -253,10 +257,10 @@ export class Logger {
         this.widgetLoop.unref();
     }
 
-    public fail = this.getLogger("error", ansis.red`✗`);
+    public fail = this.getLogger("error", ansis.red(CHAR_CROSSMARK));
     public warn = this.getLogger("warn", ansis.yellow`!`);
     public info = this.getLogger("info", ansis.blueBright`i`);
-    public done = this.getLogger("success", ansis.greenBright`✓`);
+    public done = this.getLogger("success", ansis.greenBright(CHAR_CHECKMARK));
     public debug = this.getLogger("debug", ansis.yellowBright`d`);
     public trace(...args: any[]) {
         if (!this.canLog("trace")) return;
